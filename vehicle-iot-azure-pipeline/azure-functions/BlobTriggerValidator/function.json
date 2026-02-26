@@ -1,0 +1,25 @@
+{
+  "bindings": [
+    {
+      "name": "myBlob",
+      "type": "blobTrigger",
+      "direction": "in",
+      "path": "input/landing/{name}",
+      "connection": "AzureWebJobsStorage"
+    },
+    {
+      "name": "stagingFolder",
+      "type": "blob",
+      "direction": "out",
+      "path": "staging/{name}",
+      "connection": "AzureWebJobsStorage"
+    },
+    {
+      "name": "rejectedFolder",
+      "type": "blob",
+      "direction": "out",
+      "path": "rejected/{name}",
+      "connection": "AzureWebJobsStorage"
+    }
+  ]
+}

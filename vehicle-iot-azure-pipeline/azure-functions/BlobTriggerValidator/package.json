@@ -1,0 +1,17 @@
+{
+  "name": "blob-trigger-validator",
+  "version": "1.0.0",
+  "description": "Azure Function: Validates vehicle IoT JSON blobs and routes to staging or rejected folder",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest --coverage",
+    "start": "func start"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "jest": "^29.0.0"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}

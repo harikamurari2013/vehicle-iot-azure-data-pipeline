@@ -1,0 +1,96 @@
+name: CI/CD — Vehicle IoT Azure Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  AZURE_FUNCTIONAPP_NAME: func-blob-validator
+  NODE_VERSION: '18.x'
+
+jobs:
+  # ─────────────────────────────────────
+  # Job 1: Test Azure Function
+  # ─────────────────────────────────────
+  test-function:
+    name: Test Azure Function
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: azure-functions/BlobTriggerValidator/package.json
+
+      - name: Install dependencies
+        working-directory: azure-functions/BlobTriggerValidator
+        run: npm install
+
+      - name: Run tests
+        working-directory: azure-functions/BlobTriggerValidator
+        run: npm test
+
+  # ─────────────────────────────────────
+  # Job 2: Terraform Plan (on PR)
+  # ─────────────────────────────────────
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      - name: Terraform Init
+        working-directory: infrastructure/terraform
+        run: terraform init
+        env:
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+
+      - name: Terraform Plan
+        working-directory: infrastructure/terraform
+        run: terraform plan -no-color
+        env:
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+
+  # ─────────────────────────────────────
+  # Job 3: Deploy Function App (on merge to main)
+  # ─────────────────────────────────────
+  deploy-function:
+    name: Deploy Azure Function
+    runs-on: ubuntu-latest
+    needs: test-function
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        working-directory: azure-functions/BlobTriggerValidator
+        run: npm install --production
+
+      - name: Deploy to Azure Functions
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+          package: azure-functions/BlobTriggerValidator
+          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}

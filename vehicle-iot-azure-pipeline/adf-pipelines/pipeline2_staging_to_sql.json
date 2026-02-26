@@ -1,0 +1,146 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "factoryName": { "type": "string" },
+    "keyVaultName": { "type": "string" },
+    "adlsStorageAccountName": { "type": "string" },
+    "sqlServerName": { "type": "string" },
+    "sqlDatabaseName": { "type": "string", "defaultValue": "vehicle-telemetry-db" }
+  },
+  "resources": [
+    {
+      "name": "[concat(parameters('factoryName'), '/LS_AzureSQL')]",
+      "type": "Microsoft.DataFactory/factories/linkedServices",
+      "apiVersion": "2018-06-01",
+      "properties": {
+        "description": "Azure SQL Server Linked Service — connection string pulled from Azure Key Vault",
+        "type": "AzureSqlDatabase",
+        "typeProperties": {
+          "connectionString": {
+            "type": "AzureKeyVaultSecret",
+            "store": {
+              "referenceName": "LS_AzureKeyVault",
+              "type": "LinkedServiceReference"
+            },
+            "secretName": "sql-server-connection-string"
+          }
+        }
+      }
+    },
+    {
+      "name": "[concat(parameters('factoryName'), '/DS_ADLS_Staging')]",
+      "type": "Microsoft.DataFactory/factories/datasets",
+      "apiVersion": "2018-06-01",
+      "properties": {
+        "description": "Source dataset — ADLS Gen2 staging folder (validated Customer.json files written by Azure Function)",
+        "linkedServiceName": {
+          "referenceName": "LS_ADLS_Gen2",
+          "type": "LinkedServiceReference"
+        },
+        "type": "Json",
+        "typeProperties": {
+          "location": {
+            "type": "AzureBlobFSLocation",
+            "fileSystem": "staging"
+          }
+        }
+      }
+    },
+    {
+      "name": "[concat(parameters('factoryName'), '/DS_AzureSQL_VehicleTelemetry')]",
+      "type": "Microsoft.DataFactory/factories/datasets",
+      "apiVersion": "2018-06-01",
+      "properties": {
+        "description": "Sink dataset — Azure SQL Server dbo.VehicleTelemetry table",
+        "linkedServiceName": {
+          "referenceName": "LS_AzureSQL",
+          "type": "LinkedServiceReference"
+        },
+        "type": "AzureSqlTable",
+        "typeProperties": {
+          "schema": "dbo",
+          "table": "VehicleTelemetry"
+        }
+      }
+    },
+    {
+      "name": "[concat(parameters('factoryName'), '/PL_Staging_To_SQL')]",
+      "type": "Microsoft.DataFactory/factories/pipelines",
+      "apiVersion": "2018-06-01",
+      "properties": {
+        "description": "Pipeline 2 — Copy Activity: Loads validated Customer.json records from ADLS Gen2 staging/ into Azure SQL dbo.VehicleTelemetry. Triggered automatically by Storage Event Trigger when Pipeline 1 completes and Azure Function writes a valid file to staging/.",
+        "activities": [
+          {
+            "name": "Copy_Staging_To_SQL",
+            "type": "Copy",
+            "typeProperties": {
+              "source": {
+                "type": "JsonSource",
+                "storeSettings": {
+                  "type": "AzureBlobFSReadSettings",
+                  "recursive": false,
+                  "wildcardFileName": "*.json"
+                }
+              },
+              "sink": {
+                "type": "AzureSqlSink",
+                "writeBehavior": "insert",
+                "sqlWriterUseTableLock": false
+              },
+              "enableStaging": false,
+              "translator": {
+                "type": "TabularTranslator",
+                "mappings": [
+                  { "source": { "path": "$['VehicleID']"    }, "sink": { "name": "VehicleID"    } },
+                  { "source": { "path": "$['latitiude']"    }, "sink": { "name": "Latitude"     } },
+                  { "source": { "path": "$['longitude']"    }, "sink": { "name": "Longitude"    } },
+                  { "source": { "path": "$['City']"         }, "sink": { "name": "City"         } },
+                  { "source": { "path": "$['temeprature']"  }, "sink": { "name": "Temperature"  } },
+                  { "source": { "path": "$['speed']"        }, "sink": { "name": "Speed"        } }
+                ],
+                "collectionReference": "$"
+              }
+            },
+            "inputs": [
+              {
+                "referenceName": "DS_ADLS_Staging",
+                "type": "DatasetReference"
+              }
+            ],
+            "outputs": [
+              {
+                "referenceName": "DS_AzureSQL_VehicleTelemetry",
+                "type": "DatasetReference"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "[concat(parameters('factoryName'), '/TR_StorageEvent_Staging_To_SQL')]",
+      "type": "Microsoft.DataFactory/factories/triggers",
+      "apiVersion": "2018-06-01",
+      "properties": {
+        "description": "Storage Event Trigger — fires when Azure Function writes a valid file to staging/. Automatically chains Pipeline 2 after Pipeline 1 completes.",
+        "type": "BlobEventsTrigger",
+        "typeProperties": {
+          "blobPathBeginsWith": "/staging/blobs/",
+          "blobPathEndsWith": ".json",
+          "ignoreEmptyBlobs": true,
+          "scope": "[resourceId('Microsoft.Storage/storageAccounts', parameters('adlsStorageAccountName'))]",
+          "events": ["Microsoft.Storage.BlobCreated"]
+        },
+        "pipelines": [
+          {
+            "pipelineReference": {
+              "referenceName": "PL_Staging_To_SQL",
+              "type": "PipelineReference"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

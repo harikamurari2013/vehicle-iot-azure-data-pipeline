@@ -1,0 +1,26 @@
+[
+  {
+    "VehicleID": "SK4523820602745727881887",
+    "latitiude": 86.8332365824,
+    "longitude": -78.5162003456,
+    "City": "Mérignac",
+    "temeprature": 82,
+    "speed": 191
+  },
+  {
+    "VehicleID": "SK7851674489654831567036",
+    "latitiude": 87.02408448,
+    "longitude": 70.324859904,
+    "City": "Gojal Upper Hunza",
+    "temeprature": 74,
+    "speed": 134
+  },
+  {
+    "VehicleID": "NO4282284605166",
+    "latitiude": 66.308661248,
+    "longitude": -58.9180371968,
+    "City": "Quesada",
+    "temeprature": 42,
+    "speed": 19
+  }
+]

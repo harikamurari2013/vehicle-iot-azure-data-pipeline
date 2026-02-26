@@ -1,0 +1,29 @@
+# Node
+node_modules/
+dist/
+.funcignore
+
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+*.tfvars
+!terraform.tfvars.example
+.terraform.lock.hcl
+
+# Azure Functions local settings (contains secrets)
+local.settings.json
+
+# Environment files
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user

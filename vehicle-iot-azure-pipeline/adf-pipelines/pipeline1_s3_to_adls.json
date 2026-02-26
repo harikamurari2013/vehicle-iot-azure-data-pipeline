@@ -1,0 +1,144 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "factoryName": { "type": "string" },
+    "keyVaultName": { "type": "string" },
+    "adlsStorageAccountName": { "type": "string" },
+    "s3BucketName": { "type": "string" }
+  },
+  "resources": [
+    {
+      "name": "[concat(parameters('factoryName'), '/LS_AzureKeyVault')]",
+      "type": "Microsoft.DataFactory/factories/linkedServices",
+      "apiVersion": "2018-06-01",
+      "properties": {
+        "description": "Key Vault Linked Service — used to securely retrieve AWS S3 access keys",
+        "type": "AzureKeyVault",
+        "typeProperties": {
+          "baseUrl": "[concat('https://', parameters('keyVaultName'), '.vault.azure.net/')]"
+        }
+      }
+    },
+    {
+      "name": "[concat(parameters('factoryName'), '/LS_AmazonS3')]",
+      "type": "Microsoft.DataFactory/factories/linkedServices",
+      "apiVersion": "2018-06-01",
+      "properties": {
+        "description": "Amazon S3 Linked Service — AWS Access Key and Secret pulled from Azure Key Vault",
+        "type": "AmazonS3",
+        "typeProperties": {
+          "authenticationType": "AccessKey",
+          "accessKeyId": {
+            "type": "AzureKeyVaultSecret",
+            "store": { "referenceName": "LS_AzureKeyVault", "type": "LinkedServiceReference" },
+            "secretName": "aws-access-key-id"
+          },
+          "secretAccessKey": {
+            "type": "AzureKeyVaultSecret",
+            "store": { "referenceName": "LS_AzureKeyVault", "type": "LinkedServiceReference" },
+            "secretName": "aws-secret-access-key"
+          }
+        }
+      }
+    },
+    {
+      "name": "[concat(parameters('factoryName'), '/LS_ADLS_Gen2')]",
+      "type": "Microsoft.DataFactory/factories/linkedServices",
+      "apiVersion": "2018-06-01",
+      "properties": {
+        "description": "ADLS Gen2 Linked Service — ADF Managed Identity authentication",
+        "type": "AzureBlobFS",
+        "typeProperties": {
+          "url": "[concat('https://', parameters('adlsStorageAccountName'), '.dfs.core.windows.net')]"
+        }
+      }
+    },
+    {
+      "name": "[concat(parameters('factoryName'), '/DS_S3_Source')]",
+      "type": "Microsoft.DataFactory/factories/datasets",
+      "apiVersion": "2018-06-01",
+      "properties": {
+        "description": "Source dataset — AWS S3 bucket containing raw vehicle IoT JSON files",
+        "linkedServiceName": {
+          "referenceName": "LS_AmazonS3",
+          "type": "LinkedServiceReference"
+        },
+        "type": "Json",
+        "typeProperties": {
+          "location": {
+            "type": "AmazonS3Location",
+            "bucketName": "[parameters('s3BucketName')]",
+            "folderPath": "vehicles/"
+          }
+        }
+      }
+    },
+    {
+      "name": "[concat(parameters('factoryName'), '/DS_ADLS_Landing')]",
+      "type": "Microsoft.DataFactory/factories/datasets",
+      "apiVersion": "2018-06-01",
+      "properties": {
+        "description": "Sink dataset — ADLS Gen2 input/landing folder",
+        "linkedServiceName": {
+          "referenceName": "LS_ADLS_Gen2",
+          "type": "LinkedServiceReference"
+        },
+        "type": "Json",
+        "typeProperties": {
+          "location": {
+            "type": "AzureBlobFSLocation",
+            "fileSystem": "input",
+            "folderPath": "landing"
+          }
+        }
+      }
+    },
+    {
+      "name": "[concat(parameters('factoryName'), '/PL_S3_To_ADLS_Landing')]",
+      "type": "Microsoft.DataFactory/factories/pipelines",
+      "apiVersion": "2018-06-01",
+      "properties": {
+        "description": "Pipeline 1 — Copy Activity: Ingests vehicle IoT JSON files from AWS S3 into ADLS Gen2 landing folder. On file arrival, Azure Function Blob Trigger fires automatically to validate JSON and route to staging or rejected folder.",
+        "activities": [
+          {
+            "name": "Copy_S3_To_Landing",
+            "type": "Copy",
+            "typeProperties": {
+              "source": {
+                "type": "JsonSource",
+                "storeSettings": {
+                  "type": "AmazonS3ReadSettings",
+                  "recursive": true,
+                  "wildcardFileName": "*.json"
+                }
+              },
+              "sink": {
+                "type": "JsonSink",
+                "storeSettings": {
+                  "type": "AzureBlobFSWriteSettings"
+                },
+                "formatSettings": {
+                  "type": "JsonWriteSettings"
+                }
+              },
+              "enableStaging": false
+            },
+            "inputs": [
+              {
+                "referenceName": "DS_S3_Source",
+                "type": "DatasetReference"
+              }
+            ],
+            "outputs": [
+              {
+                "referenceName": "DS_ADLS_Landing",
+                "type": "DatasetReference"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
