@@ -122,7 +122,7 @@ resource "azurerm_mssql_database" "sqldb" {
 }
 
 # ─────────────────────────────────────────
-# Azure Function App (for Blob Trigger)
+# Azure Function App (Blob Trigger)
 # ─────────────────────────────────────────
 resource "azurerm_service_plan" "func_plan" {
   name                = "${var.function_app_name}-plan"
@@ -147,7 +147,7 @@ resource "azurerm_linux_function_app" "func" {
   }
 
   app_settings = {
-    "AzureWebJobsStorage"    = azurerm_storage_account.adls.primary_connection_string
+    "AzureWebJobsStorage"      = azurerm_storage_account.adls.primary_connection_string
     "FUNCTIONS_WORKER_RUNTIME" = "node"
   }
 

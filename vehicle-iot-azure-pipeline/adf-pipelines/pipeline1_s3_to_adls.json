@@ -13,7 +13,7 @@
       "type": "Microsoft.DataFactory/factories/linkedServices",
       "apiVersion": "2018-06-01",
       "properties": {
-        "description": "Key Vault Linked Service — used to securely retrieve AWS S3 access keys",
+        "description": "Key Vault Linked Service — stores AWS IAM access keys as secrets",
         "type": "AzureKeyVault",
         "typeProperties": {
           "baseUrl": "[concat('https://', parameters('keyVaultName'), '.vault.azure.net/')]"
@@ -25,7 +25,7 @@
       "type": "Microsoft.DataFactory/factories/linkedServices",
       "apiVersion": "2018-06-01",
       "properties": {
-        "description": "Amazon S3 Linked Service — AWS Access Key and Secret pulled from Azure Key Vault",
+        "description": "Amazon S3 Linked Service — access keys pulled from Azure Key Vault",
         "type": "AmazonS3",
         "typeProperties": {
           "authenticationType": "AccessKey",
@@ -59,7 +59,7 @@
       "type": "Microsoft.DataFactory/factories/datasets",
       "apiVersion": "2018-06-01",
       "properties": {
-        "description": "Source dataset — AWS S3 bucket containing raw vehicle IoT JSON files",
+        "description": "Source dataset — AWS S3 bucket containing vehicle IoT JSON files",
         "linkedServiceName": {
           "referenceName": "LS_AmazonS3",
           "type": "LinkedServiceReference"
@@ -68,8 +68,7 @@
         "typeProperties": {
           "location": {
             "type": "AmazonS3Location",
-            "bucketName": "[parameters('s3BucketName')]",
-            "folderPath": "vehicles/"
+            "bucketName": "[parameters('s3BucketName')]"
           }
         }
       }
@@ -79,7 +78,7 @@
       "type": "Microsoft.DataFactory/factories/datasets",
       "apiVersion": "2018-06-01",
       "properties": {
-        "description": "Sink dataset — ADLS Gen2 input/landing folder",
+        "description": "Sink dataset — ADLS Gen2 Landing container",
         "linkedServiceName": {
           "referenceName": "LS_ADLS_Gen2",
           "type": "LinkedServiceReference"
@@ -88,8 +87,7 @@
         "typeProperties": {
           "location": {
             "type": "AzureBlobFSLocation",
-            "fileSystem": "input",
-            "folderPath": "landing"
+            "fileSystem": "landing"
           }
         }
       }
@@ -99,7 +97,7 @@
       "type": "Microsoft.DataFactory/factories/pipelines",
       "apiVersion": "2018-06-01",
       "properties": {
-        "description": "Pipeline 1 — Copy Activity: Ingests vehicle IoT JSON files from AWS S3 into ADLS Gen2 landing folder. On file arrival, Azure Function Blob Trigger fires automatically to validate JSON and route to staging or rejected folder.",
+        "description": "Pipeline 1 — Ingests vehicle IoT JSON files from AWS S3 into ADLS Gen2 Landing container. Azure Function Blob Trigger fires automatically on new file arrival to validate JSON and route to staging or rejected.",
         "activities": [
           {
             "name": "Copy_S3_To_Landing",
@@ -125,16 +123,10 @@
               "enableStaging": false
             },
             "inputs": [
-              {
-                "referenceName": "DS_S3_Source",
-                "type": "DatasetReference"
-              }
+              { "referenceName": "DS_S3_Source", "type": "DatasetReference" }
             ],
             "outputs": [
-              {
-                "referenceName": "DS_ADLS_Landing",
-                "type": "DatasetReference"
-              }
+              { "referenceName": "DS_ADLS_Landing", "type": "DatasetReference" }
             ]
           }
         ]

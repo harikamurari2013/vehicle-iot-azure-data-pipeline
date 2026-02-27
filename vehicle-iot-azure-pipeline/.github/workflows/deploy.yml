@@ -25,14 +25,14 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: azure-functions/BlobTriggerValidator/package.json
+          cache-dependency-path: vehicle-iot-azure-pipeline/azure-functions/BlobTriggerValidator/package.json
 
       - name: Install dependencies
-        working-directory: azure-functions/BlobTriggerValidator
+        working-directory: vehicle-iot-azure-pipeline/azure-functions/BlobTriggerValidator
         run: npm install
 
       - name: Run tests
-        working-directory: azure-functions/BlobTriggerValidator
+        working-directory: vehicle-iot-azure-pipeline/azure-functions/BlobTriggerValidator
         run: npm test
 
   # ─────────────────────────────────────
@@ -51,7 +51,7 @@ jobs:
           terraform_version: 1.5.0
 
       - name: Terraform Init
-        working-directory: infrastructure/terraform
+        working-directory: vehicle-iot-azure-pipeline/infrastructure/terraform
         run: terraform init
         env:
           ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
@@ -60,7 +60,7 @@ jobs:
           ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
 
       - name: Terraform Plan
-        working-directory: infrastructure/terraform
+        working-directory: vehicle-iot-azure-pipeline/infrastructure/terraform
         run: terraform plan -no-color
         env:
           ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
@@ -85,12 +85,12 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
-        working-directory: azure-functions/BlobTriggerValidator
+        working-directory: vehicle-iot-azure-pipeline/azure-functions/BlobTriggerValidator
         run: npm install --production
 
       - name: Deploy to Azure Functions
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-          package: azure-functions/BlobTriggerValidator
+          package: vehicle-iot-azure-pipeline/azure-functions/BlobTriggerValidator
           publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}

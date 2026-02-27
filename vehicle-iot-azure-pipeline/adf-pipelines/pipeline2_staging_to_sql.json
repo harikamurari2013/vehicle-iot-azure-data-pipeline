@@ -14,7 +14,7 @@
       "type": "Microsoft.DataFactory/factories/linkedServices",
       "apiVersion": "2018-06-01",
       "properties": {
-        "description": "Azure SQL Server Linked Service — connection string pulled from Azure Key Vault",
+        "description": "Azure SQL Server Linked Service — connection string from Azure Key Vault",
         "type": "AzureSqlDatabase",
         "typeProperties": {
           "connectionString": {
@@ -33,7 +33,7 @@
       "type": "Microsoft.DataFactory/factories/datasets",
       "apiVersion": "2018-06-01",
       "properties": {
-        "description": "Source dataset — ADLS Gen2 staging folder (validated Customer.json files written by Azure Function)",
+        "description": "Source dataset — ADLS Gen2 staging folder (validated files written by Azure Function)",
         "linkedServiceName": {
           "referenceName": "LS_ADLS_Gen2",
           "type": "LinkedServiceReference"
@@ -69,7 +69,7 @@
       "type": "Microsoft.DataFactory/factories/pipelines",
       "apiVersion": "2018-06-01",
       "properties": {
-        "description": "Pipeline 2 — Copy Activity: Loads validated Customer.json records from ADLS Gen2 staging/ into Azure SQL dbo.VehicleTelemetry. Triggered automatically by Storage Event Trigger when Pipeline 1 completes and Azure Function writes a valid file to staging/.",
+        "description": "Pipeline 2 — Loads validated Customer.json records from ADLS Gen2 staging/ into Azure SQL dbo.VehicleTelemetry. Triggered automatically by Storage Event Trigger when Azure Function writes a valid file to staging/.",
         "activities": [
           {
             "name": "Copy_Staging_To_SQL",
@@ -92,27 +92,21 @@
               "translator": {
                 "type": "TabularTranslator",
                 "mappings": [
-                  { "source": { "path": "$['VehicleID']"    }, "sink": { "name": "VehicleID"    } },
-                  { "source": { "path": "$['latitiude']"    }, "sink": { "name": "Latitude"     } },
-                  { "source": { "path": "$['longitude']"    }, "sink": { "name": "Longitude"    } },
-                  { "source": { "path": "$['City']"         }, "sink": { "name": "City"         } },
-                  { "source": { "path": "$['temeprature']"  }, "sink": { "name": "Temperature"  } },
-                  { "source": { "path": "$['speed']"        }, "sink": { "name": "Speed"        } }
+                  { "source": { "path": "$['VehicleID']"   }, "sink": { "name": "VehicleID"   } },
+                  { "source": { "path": "$['latitiude']"   }, "sink": { "name": "Latitude"    } },
+                  { "source": { "path": "$['longitude']"   }, "sink": { "name": "Longitude"   } },
+                  { "source": { "path": "$['City']"        }, "sink": { "name": "City"        } },
+                  { "source": { "path": "$['temeprature']" }, "sink": { "name": "Temperature" } },
+                  { "source": { "path": "$['speed']"       }, "sink": { "name": "Speed"       } }
                 ],
                 "collectionReference": "$"
               }
             },
             "inputs": [
-              {
-                "referenceName": "DS_ADLS_Staging",
-                "type": "DatasetReference"
-              }
+              { "referenceName": "DS_ADLS_Staging", "type": "DatasetReference" }
             ],
             "outputs": [
-              {
-                "referenceName": "DS_AzureSQL_VehicleTelemetry",
-                "type": "DatasetReference"
-              }
+              { "referenceName": "DS_AzureSQL_VehicleTelemetry", "type": "DatasetReference" }
             ]
           }
         ]
@@ -123,7 +117,7 @@
       "type": "Microsoft.DataFactory/factories/triggers",
       "apiVersion": "2018-06-01",
       "properties": {
-        "description": "Storage Event Trigger — fires when Azure Function writes a valid file to staging/. Automatically chains Pipeline 2 after Pipeline 1 completes.",
+        "description": "Storage Event Trigger — fires when Azure Function writes a valid file to staging/. Automatically starts Pipeline 2.",
         "type": "BlobEventsTrigger",
         "typeProperties": {
           "blobPathBeginsWith": "/staging/blobs/",
